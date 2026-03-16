@@ -1,0 +1,140 @@
+import pygame
+import random
+import webbrowser
+import os
+from dotenv import load_dotenv
+
+# --- CONFIGURAÇÕES DE SEGURANÇA E PAGAMENTO ---
+load_dotenv()
+# Se usares uma IA no futuro, a chave estará protegida aqui:
+CHAVE_IA = os.getenv("MINHA_IA_KEY") 
+EMAIL_PAGAMENTO = "antoniocecilia223@gmail.com"
+# O link usa o teu e-mail para garantir que o dinheiro cai na tua conta
+LINK_PAYPAL = "https://www.paypal.com/paypalme/antoniocecilia223/3usd"
+
+# --- CONFIGURAÇÕES GRÁFICAS ---
+WIDTH, HEIGHT = 1000, 700
+FPS = 60
+AZUL_DARK = (10, 20, 45)
+DOURADO = (255, 215, 0)
+VERDE_DINHEIRO = (0, 230, 100)
+BRANCO = (255, 255, 255)
+
+pygame.init()
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Angola Marble Race - Sistema de Apostas Real")
+font_p = pygame.font.SysFont("Arial", 20, bold=True)
+font_g = pygame.font.SysFont("Arial", 35, bold=True)
+clock = pygame.time.Clock()
+
+class Marble:
+    def __init__(self, nome, x, cor):
+        self.nome = nome
+        self.x = x
+        self.cor = cor
+        self.y = random.randint(-900, -200)
+        self.vel_y = 0
+        self.finished = False
+
+    def update(self):
+        if not self.finished:
+            # CORRIDA JUSTA: Todos têm a mesma chance aleatória
+            self.vel_y += random.uniform(0.16, 0.23)
+            self.y += self.vel_y
+            self.x += random.uniform(-1.5, 1.5)
+            if self.y >= 600:
+                self.y = 600
+                self.finished = True
+                return True
+        return False
+
+# --- VARIÁVEIS DE CONTROLE ---
+estado = "LOGIN"
+usuario_identificacao = ""
+saldo = 0
+vencedor = ""
+aposta_em = ""
+marbles = []
+paises = ["Angola", "Brasil", "Portugal", "EUA", "França", "Nigéria", "Moçambique"]
+
+# --- LOOP PRINCIPAL ---
+running = True
+while running:
+    screen.fill(AZUL_DARK)
+    mouse = pygame.mouse.get_pos()
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        
+        # Lógica de Digitação no Login
+        if estado == "LOGIN" and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN and len(usuario_identificacao) > 2:
+                estado = "MENU"
+            elif event.key == pygame.K_BACKSPACE:
+                usuario_identificacao = usuario_identificacao[:-1]
+            else:
+                if len(usuario_identificacao) < 20:
+                    usuario_identificacao += event.unicode
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if estado == "MENU":
+                # Botão Pagar $3
+                if 350 < mouse[0] < 650 and 200 < mouse[1] < 260:
+                    webbrowser.open(LINK_PAYPAL)
+                    saldo += 3 # Simulação de crédito após clique
+                
+                # Botão Apostar em Angola
+                if saldo >= 3 and 350 < mouse[0] < 650 and 320 < mouse[1] < 370:
+                    aposta_em = "Angola"
+                    saldo -= 3
+                    marbles = [Marble(p, random.randint(150, 850), (random.randint(50,255), random.randint(50,255), 255)) for p in paises]
+                    estado = "CORRIDA"
+
+            elif estado == "RESULTADO":
+                estado, vencedor, aposta_em = "MENU", "", ""
+
+    # --- INTERFACES ---
+    if estado == "LOGIN":
+        screen.blit(font_g.render("QUEM ESTÁ A JOGAR?", True, BRANCO), (320, 200))
+        screen.blit(font_p.render("(Digite o seu nome/e-mail do PayPal)", True, (150,150,150)), (330, 240))
+        pygame.draw.rect(screen, BRANCO, (350, 280, 300, 50), 2, border_radius=10)
+        screen.blit(font_p.render(usuario_identificacao + "_", True, DOURADO), (365, 292))
+        if len(usuario_identificacao) > 2:
+            screen.blit(font_p.render("Pressione ENTER para entrar", True, VERDE_DINHEIRO), (365, 340))
+
+    elif estado == "MENU":
+        screen.blit(font_p.render(f"ID JOGADOR: {usuario_identificacao}", True, BRANCO), (20, 20))
+        screen.blit(font_p.render(f"SALDO: ${saldo}.00", True, VERDE_DINHEIRO), (20, 50))
+        
+        # Botão PayPal
+        pygame.draw.rect(screen, (0, 112, 186), (350, 200, 300, 60), border_radius=15)
+        screen.blit(font_p.render("PAGAR $3 COM PAYPAL", True, BRANCO), (390, 220))
+        
+        if saldo >= 3:
+            pygame.draw.rect(screen, DOURADO, (350, 320, 300, 50), border_radius=10)
+            screen.blit(font_p.render("APOSTAR EM ANGOLA", True, AZUL_DARK), (395, 335))
+
+    elif estado == "CORRIDA":
+        pygame.draw.rect(screen, VERDE_DINHEIRO, (0, 600, WIDTH, 10))
+        for m in marbles:
+            if m.update() and vencedor == "": vencedor = m.nome
+            pygame.draw.circle(screen, m.cor, (int(m.x), int(m.y)), 16)
+            screen.blit(font_p.render(m.nome, True, BRANCO), (m.x + 20, m.y - 10))
+        if all(m.finished for m in marbles): estado = "RESULTADO"
+
+    elif estado == "RESULTADO":
+        txt = f"VENCEDOR: {vencedor}"
+        screen.blit(font_g.render(txt, True, DOURADO), (380, 200))
+        if vencedor == aposta_em:
+            screen.blit(font_g.render("GANHASTE $30!", True, VERDE_DINHEIRO), (390, 270))
+            # Registo automático para o António conferir
+            with open("lista_premios.txt", "a") as f:
+                f.write(f"JOGADOR: {usuario_identificacao} | GANHOU: $30\n")
+        else:
+            screen.blit(font_g.render("PERDESTE A APOSTA", True, (255,50,50)), (360, 270))
+        screen.blit(font_p.render("CLIQUE PARA VOLTAR AO MENU", True, BRANCO), (360, 450))
+
+    pygame.display.flip()
+    clock.tick(FPS)
+pygame.quit()
