@@ -2,46 +2,44 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>Angola Marble Race Premium</title>
+    <title>Mundial 196 - 3 Minutos de Corrida</title>
     <style>
-        body { background: #0a142d; color: white; font-family: Arial; text-align: center; margin: 0; overflow: hidden; }
-        canvas { background: #0a142d; border-bottom: 5px solid #00e664; display: block; margin: 0 auto; }
-        #ui { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10,20,45,0.9); padding: 20px; border-radius: 15px; border: 2px solid #ffd700; width: 350px; }
-        button { background: #0070ba; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        button:hover { background: #005ea6; }
-        .bet-btn { background: #ffd700; color: #0a142d; margin-top: 20px; }
-        input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
-        #status { color: #00e664; font-weight: bold; margin: 10px 0; }
+        body { background: #050a18; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
+        canvas { display: block; background: #0a142d; }
+        #interface { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                     background: rgba(10, 20, 45, 0.98); padding: 30px; border-radius: 20px; 
+                     border: 3px solid #ffd700; width: 400px; text-align: center; box-shadow: 0 0 50px #000; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; }
+        button { background: #0070ba; color: white; border: none; padding: 15px; width: 100%; 
+                 border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 18px; margin-top: 10px; }
+        #timer { position: absolute; top: 20px; right: 20px; font-size: 24px; color: #ffd700; font-weight: bold; }
+        #progress { position: absolute; left: 0; top: 0; height: 5px; background: #00e664; width: 0%; }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
+<div id="progress"></div>
+<div id="timer">03:00</div>
+<canvas id="gameCanvas"></canvas>
 
-    <div id="ui">
-        <h2 id="title">MARBLE RACE 🇦🇴</h2>
-        <div id="login-section">
-            <p>Identifica-te para o PayPal:</p>
-            <input type="text" id="username" placeholder="Teu Nome ou E-mail">
-            <button onclick="confirmarLogin()">Entrar no Jogo</button>
-        </div>
-
-        <div id="menu-section" style="display:none;">
-            <p id="player-welcome"></p>
-            <p id="status">Saldo: $0.00</p>
-            <button onclick="pagarPayPal()">PAGAR $3 COM PAYPAL</button>
-            <div id="bet-options" style="display:none;">
-                <button class="bet-btn" onclick="começarCorrida('Angola')">APOSTAR EM ANGOLA 🇦🇴</button>
-                <button class="bet-btn" style="background:white;" onclick="começarCorrida('Brasil')">APOSTAR NO BRASIL 🇧🇷</button>
-            </div>
-        </div>
-
-        <div id="result-section" style="display:none;">
-            <h1 id="winner-text"></h1>
-            <p id="prize-text"></p>
-            <button onclick="reiniciar()">VOLTAR AO MENU</button>
-        </div>
+<div id="interface">
+    <h1 style="color:#ffd700;">WORLD CUP 🇦🇴</h1>
+    <div id="step-1">
+        <input type="text" id="username" placeholder="Teu Nome (PayPal)">
+        <button onclick="proximo()">Próximo</button>
     </div>
+    <div id="step-2" style="display:none;">
+        <p>Aposta: $3 | Prémio: $30</p>
+        <button onclick="abrirPaypal()">1º PAGAR $3 (PAYPAL)</button>
+        <select id="countrySelect"></select>
+        <button id="startBtn" onclick="iniciar()" style="display:none; background:#ffd700; color:#000;">2º INICIAR CORRIDA 🏁</button>
+    </div>
+    <div id="step-3" style="display:none;">
+        <h2 id="winTxt"></h2>
+        <p id="rewardTxt"></p>
+        <button onclick="location.reload()">Jogar Novamente</button>
+    </div>
+</div>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
@@ -49,118 +47,103 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    let estado = "UI";
-    let saldo = 0;
-    let usuario = "";
-    let apostaEm = "";
-    let vencedor = "";
-    let marbles = [];
-    const paises = [
-        {nome: "Angola", cor: "#FF0000", emoji: "🇦🇴"},
-        {nome: "Brasil", cor: "#009739", emoji: "🇧🇷"},
-        {nome: "Portugal", cor: "#FF0000", emoji: "🇵🇹"},
-        {nome: "EUA", cor: "#002868", emoji: "🇺🇸"},
-        {nome: "Nigéria", cor: "#008751", emoji: "🇳🇬"}
-    ];
+    const paises = ["Angola 🇦🇴", "Brasil 🇧🇷", "Portugal 🇵🇹", "EUA 🇺🇸", "Nigéria 🇳🇬", "Japão 🇯🇵", "China 🇨🇳", "Alemanha 🇩🇪"];
+    for(let i=1; i<=188; i++) { paises.push("País " + i + " 🏳️"); }
 
-    function confirmarLogin() {
-        usuario = document.getElementById('username').value;
-        if(usuario.length > 2) {
-            document.getElementById('login-section').style.display = "none";
-            document.getElementById('menu-section').style.display = "block";
-            document.getElementById('player-welcome').innerText = "Jogador: " + usuario;
+    const sel = document.getElementById('countrySelect');
+    paises.forEach(p => { let o = document.createElement('option'); o.text = p; sel.add(o); });
+
+    let balls = [], obstacles = [], state = "MENU", winner = null, startTime, bet = "";
+    
+    // Criar Labirinto de Obstáculos GIGANTE
+    function createObstacles() {
+        obstacles = [];
+        for(let y = 100; y < canvas.height - 150; y += 60) {
+            let offset = (y % 120 === 0) ? 30 : 0;
+            for(let x = 30; x < canvas.width; x += 80) {
+                obstacles.push({x: x + offset + (Math.random()*20), y: y, r: 6});
+            }
         }
     }
 
-    function pagarPayPal() {
-        // Abre o teu link do PayPal
-        window.open("https://www.paypal.me/antoniocecilia223/3usd", "_blank");
-        // Simula o saldo para o jogo continuar
-        saldo = 3;
-        document.getElementById('status').innerText = "Saldo: $3.00 (Confirmado)";
-        document.getElementById('bet-options').style.display = "block";
+    function proximo() { document.getElementById('step-1').style.display="none"; document.getElementById('step-2').style.display="block"; }
+    function abrirPaypal() { 
+        window.open("https://www.paypal.me/antoniocecilia223/3usd", "_blank"); 
+        document.getElementById('startBtn').style.display="block"; 
     }
 
-    function começarCorrida(pais) {
-        apostaEm = pais;
-        saldo -= 3;
-        marbles = paises.map((p, i) => ({
-            ...p,
-            x: (canvas.width / (paises.length + 1)) * (i + 1),
-            y: -100 - (Math.random() * 500),
-            velY: 0,
+    function iniciar() {
+        bet = sel.value;
+        document.getElementById('interface').style.display="none";
+        createObstacles();
+        // Para demorar 3 minutos, os berlindes começam MUITO alto (lá em cima no céu invisível)
+        balls = paises.map(p => ({
+            nome: p,
+            x: Math.random() * canvas.width,
+            y: -15000 - (Math.random() * 2000), // Posição altíssima para demorar a cair
+            vx: 0, vy: 0,
+            cor: p.includes("Angola") ? "#ff0000" : `hsl(${Math.random()*360}, 70%, 50%)`,
             finished: false
         }));
-        estado = "CORRIDA";
-        document.getElementById('ui').style.display = "none";
-        animar();
+        state = "RACE";
+        startTime = Date.now();
+        animate();
     }
 
-    function animar() {
-        if (estado !== "CORRIDA") return;
+    function animate() {
+        if(state !== "RACE") return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Timer e Progresso
+        let elapsed = (Date.now() - startTime) / 1000;
+        let remaining = Math.max(0, 180 - elapsed);
+        let min = Math.floor(remaining / 60), sec = Math.floor(remaining % 60);
+        document.getElementById('timer').innerText = `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+        document.getElementById('progress').style.width = (elapsed / 180 * 100) + "%";
 
-        // Linha de Chegada
-        ctx.strokeStyle = "#00e664";
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height - 100);
-        ctx.lineTo(canvas.width, canvas.height - 100);
-        ctx.stroke();
+        // Obstáculos
+        ctx.fillStyle = "#ffd700";
+        obstacles.forEach(o => { ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, 7); ctx.fill(); });
 
-        let todosFinalizados = true;
+        // Meta
+        ctx.fillStyle = "#00e664"; ctx.fillRect(0, canvas.height - 80, canvas.width, 10);
 
-        marbles.forEach(m => {
-            if (!m.finished) {
-                m.velY += 0.15 + (Math.random() * 0.1); // JUSTO PARA TODOS
-                m.y += m.velY;
-                m.x += (Math.random() - 0.5) * 2;
+        balls.forEach(b => {
+            if(!b.finished) {
+                b.vy += 0.05; // Gravidade baixa para demorar
+                b.y += b.vy; b.x += b.vx;
+                b.vx *= 0.98;
 
-                if (m.y >= canvas.height - 100) {
-                    m.y = canvas.height - 100;
-                    m.finished = true;
-                    if (vencedor === "") vencedor = m.nome;
+                if(b.x < 10 || b.x > canvas.width - 10) b.vx *= -1;
+
+                // Colisão com Obstáculos
+                obstacles.forEach(o => {
+                    let dx = b.x - o.x, dy = b.y - o.y, d = Math.sqrt(dx*dx + dy*dy);
+                    if(d < 18) { 
+                        b.vy *= -0.4; // Salta para cima
+                        b.vx = (b.x - o.x) * 0.5;
+                    }
+                });
+
+                // Só podem ganhar quando o tempo estiver quase a acabar (perto dos 3 min)
+                if(b.y >= canvas.height - 95) {
+                    if(elapsed > 170) { // Bloqueio para garantir os 3 minutos
+                        b.finished = true; if(!winner) winner = b.nome;
+                    } else {
+                        b.y = canvas.height - 120; b.vy *= -0.8; // Ressalta para cima se chegar cedo
+                    }
                 }
-                todosFinalizados = false;
             }
-
-            // Desenhar Berlinde
-            ctx.fillStyle = m.cor;
-            ctx.beginPath();
-            ctx.arc(m.x, m.y, 20, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "white";
-            ctx.font = "14px Arial";
-            ctx.fillText(m.emoji + " " + m.nome, m.x - 25, m.y - 30);
+            ctx.fillStyle = b.cor; ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, 7); ctx.fill();
         });
 
-        if (todosFinalizados) {
-            finalizarJogo();
-        } else {
-            requestAnimationFrame(animar);
-        }
-    }
-
-    function finalizarJogo() {
-        estado = "UI";
-        document.getElementById('ui').style.display = "block";
-        document.getElementById('menu-section').style.display = "none";
-        document.getElementById('result-section').style.display = "block";
-        document.getElementById('winner-text').innerText = "VENCEDOR: " + vencedor;
-        
-        if (vencedor === apostaEm) {
-            document.getElementById('prize-text').innerHTML = "<span style='color:#00e664'>GANHASTE $30!</span><br>António enviará para o teu PayPal.";
-        } else {
-            document.getElementById('prize-text').innerText = "PERDESTE A APOSTA.";
-        }
-    }
-
-    function reiniciar() {
-        vencedor = "";
-        document.getElementById('result-section').style.display = "none";
-        document.getElementById('menu-section').style.display = "block";
-        document.getElementById('status').innerText = "Saldo: $0.00";
-        document.getElementById('bet-options').style.display = "none";
+        if(balls.every(b => b.finished)) {
+            state = "MENU"; document.getElementById('interface').style.display="block";
+            document.getElementById('step-2').style.display="none";
+            document.getElementById('step-3').style.display="block";
+            document.getElementById('winTxt').innerText = "VENCEDOR: " + winner;
+            document.getElementById('rewardTxt').innerHTML = winner === bet ? "<h2 style='color:#0e6'>GANHASTE $30!</h2>" : "PERDESTE.";
+        } else { requestAnimationFrame(animate); }
     }
 </script>
 </body>
