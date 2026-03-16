@@ -1,140 +1,167 @@
-import pygame
-import random
-import webbrowser
-import os
-from dotenv import load_dotenv
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Angola Marble Race Premium</title>
+    <style>
+        body { background: #0a142d; color: white; font-family: Arial; text-align: center; margin: 0; overflow: hidden; }
+        canvas { background: #0a142d; border-bottom: 5px solid #00e664; display: block; margin: 0 auto; }
+        #ui { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10,20,45,0.9); padding: 20px; border-radius: 15px; border: 2px solid #ffd700; width: 350px; }
+        button { background: #0070ba; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        button:hover { background: #005ea6; }
+        .bet-btn { background: #ffd700; color: #0a142d; margin-top: 20px; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
+        #status { color: #00e664; font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
 
-# --- CONFIGURAÇÕES DE SEGURANÇA E PAGAMENTO ---
-load_dotenv()
-# Se usares uma IA no futuro, a chave estará protegida aqui:
-CHAVE_IA = os.getenv("MINHA_IA_KEY") 
-EMAIL_PAGAMENTO = "antoniocecilia223@gmail.com"
-# O link usa o teu e-mail para garantir que o dinheiro cai na tua conta
-LINK_PAYPAL = "https://www.paypal.com/paypalme/antoniocecilia223/3usd"
+    <canvas id="gameCanvas"></canvas>
 
-# --- CONFIGURAÇÕES GRÁFICAS ---
-WIDTH, HEIGHT = 1000, 700
-FPS = 60
-AZUL_DARK = (10, 20, 45)
-DOURADO = (255, 215, 0)
-VERDE_DINHEIRO = (0, 230, 100)
-BRANCO = (255, 255, 255)
+    <div id="ui">
+        <h2 id="title">MARBLE RACE 🇦🇴</h2>
+        <div id="login-section">
+            <p>Identifica-te para o PayPal:</p>
+            <input type="text" id="username" placeholder="Teu Nome ou E-mail">
+            <button onclick="confirmarLogin()">Entrar no Jogo</button>
+        </div>
 
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Angola Marble Race - Sistema de Apostas Real")
-font_p = pygame.font.SysFont("Arial", 20, bold=True)
-font_g = pygame.font.SysFont("Arial", 35, bold=True)
-clock = pygame.time.Clock()
+        <div id="menu-section" style="display:none;">
+            <p id="player-welcome"></p>
+            <p id="status">Saldo: $0.00</p>
+            <button onclick="pagarPayPal()">PAGAR $3 COM PAYPAL</button>
+            <div id="bet-options" style="display:none;">
+                <button class="bet-btn" onclick="começarCorrida('Angola')">APOSTAR EM ANGOLA 🇦🇴</button>
+                <button class="bet-btn" style="background:white;" onclick="começarCorrida('Brasil')">APOSTAR NO BRASIL 🇧🇷</button>
+            </div>
+        </div>
 
-class Marble:
-    def __init__(self, nome, x, cor):
-        self.nome = nome
-        self.x = x
-        self.cor = cor
-        self.y = random.randint(-900, -200)
-        self.vel_y = 0
-        self.finished = False
+        <div id="result-section" style="display:none;">
+            <h1 id="winner-text"></h1>
+            <p id="prize-text"></p>
+            <button onclick="reiniciar()">VOLTAR AO MENU</button>
+        </div>
+    </div>
 
-    def update(self):
-        if not self.finished:
-            # CORRIDA JUSTA: Todos têm a mesma chance aleatória
-            self.vel_y += random.uniform(0.16, 0.23)
-            self.y += self.vel_y
-            self.x += random.uniform(-1.5, 1.5)
-            if self.y >= 600:
-                self.y = 600
-                self.finished = True
-                return True
-        return False
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-# --- VARIÁVEIS DE CONTROLE ---
-estado = "LOGIN"
-usuario_identificacao = ""
-saldo = 0
-vencedor = ""
-aposta_em = ""
-marbles = []
-paises = ["Angola", "Brasil", "Portugal", "EUA", "França", "Nigéria", "Moçambique"]
+    let estado = "UI";
+    let saldo = 0;
+    let usuario = "";
+    let apostaEm = "";
+    let vencedor = "";
+    let marbles = [];
+    const paises = [
+        {nome: "Angola", cor: "#FF0000", emoji: "🇦🇴"},
+        {nome: "Brasil", cor: "#009739", emoji: "🇧🇷"},
+        {nome: "Portugal", cor: "#FF0000", emoji: "🇵🇹"},
+        {nome: "EUA", cor: "#002868", emoji: "🇺🇸"},
+        {nome: "Nigéria", cor: "#008751", emoji: "🇳🇬"}
+    ];
 
-# --- LOOP PRINCIPAL ---
-running = True
-while running:
-    screen.fill(AZUL_DARK)
-    mouse = pygame.mouse.get_pos()
-    
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    function confirmarLogin() {
+        usuario = document.getElementById('username').value;
+        if(usuario.length > 2) {
+            document.getElementById('login-section').style.display = "none";
+            document.getElementById('menu-section').style.display = "block";
+            document.getElementById('player-welcome').innerText = "Jogador: " + usuario;
+        }
+    }
+
+    function pagarPayPal() {
+        // Abre o teu link do PayPal
+        window.open("https://www.paypal.me/antoniocecilia223/3usd", "_blank");
+        // Simula o saldo para o jogo continuar
+        saldo = 3;
+        document.getElementById('status').innerText = "Saldo: $3.00 (Confirmado)";
+        document.getElementById('bet-options').style.display = "block";
+    }
+
+    function começarCorrida(pais) {
+        apostaEm = pais;
+        saldo -= 3;
+        marbles = paises.map((p, i) => ({
+            ...p,
+            x: (canvas.width / (paises.length + 1)) * (i + 1),
+            y: -100 - (Math.random() * 500),
+            velY: 0,
+            finished: false
+        }));
+        estado = "CORRIDA";
+        document.getElementById('ui').style.display = "none";
+        animar();
+    }
+
+    function animar() {
+        if (estado !== "CORRIDA") return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Linha de Chegada
+        ctx.strokeStyle = "#00e664";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height - 100);
+        ctx.lineTo(canvas.width, canvas.height - 100);
+        ctx.stroke();
+
+        let todosFinalizados = true;
+
+        marbles.forEach(m => {
+            if (!m.finished) {
+                m.velY += 0.15 + (Math.random() * 0.1); // JUSTO PARA TODOS
+                m.y += m.velY;
+                m.x += (Math.random() - 0.5) * 2;
+
+                if (m.y >= canvas.height - 100) {
+                    m.y = canvas.height - 100;
+                    m.finished = true;
+                    if (vencedor === "") vencedor = m.nome;
+                }
+                todosFinalizados = false;
+            }
+
+            // Desenhar Berlinde
+            ctx.fillStyle = m.cor;
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, 20, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "white";
+            ctx.font = "14px Arial";
+            ctx.fillText(m.emoji + " " + m.nome, m.x - 25, m.y - 30);
+        });
+
+        if (todosFinalizados) {
+            finalizarJogo();
+        } else {
+            requestAnimationFrame(animar);
+        }
+    }
+
+    function finalizarJogo() {
+        estado = "UI";
+        document.getElementById('ui').style.display = "block";
+        document.getElementById('menu-section').style.display = "none";
+        document.getElementById('result-section').style.display = "block";
+        document.getElementById('winner-text').innerText = "VENCEDOR: " + vencedor;
         
-        # Lógica de Digitação no Login
-        if estado == "LOGIN" and event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_RETURN and len(usuario_identificacao) > 2:
-                estado = "MENU"
-            elif event.key == pygame.K_BACKSPACE:
-                usuario_identificacao = usuario_identificacao[:-1]
-            else:
-                if len(usuario_identificacao) < 20:
-                    usuario_identificacao += event.unicode
+        if (vencedor === apostaEm) {
+            document.getElementById('prize-text').innerHTML = "<span style='color:#00e664'>GANHASTE $30!</span><br>António enviará para o teu PayPal.";
+        } else {
+            document.getElementById('prize-text').innerText = "PERDESTE A APOSTA.";
+        }
+    }
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if estado == "MENU":
-                # Botão Pagar $3
-                if 350 < mouse[0] < 650 and 200 < mouse[1] < 260:
-                    webbrowser.open(LINK_PAYPAL)
-                    saldo += 3 # Simulação de crédito após clique
-                
-                # Botão Apostar em Angola
-                if saldo >= 3 and 350 < mouse[0] < 650 and 320 < mouse[1] < 370:
-                    aposta_em = "Angola"
-                    saldo -= 3
-                    marbles = [Marble(p, random.randint(150, 850), (random.randint(50,255), random.randint(50,255), 255)) for p in paises]
-                    estado = "CORRIDA"
-
-            elif estado == "RESULTADO":
-                estado, vencedor, aposta_em = "MENU", "", ""
-
-    # --- INTERFACES ---
-    if estado == "LOGIN":
-        screen.blit(font_g.render("QUEM ESTÁ A JOGAR?", True, BRANCO), (320, 200))
-        screen.blit(font_p.render("(Digite o seu nome/e-mail do PayPal)", True, (150,150,150)), (330, 240))
-        pygame.draw.rect(screen, BRANCO, (350, 280, 300, 50), 2, border_radius=10)
-        screen.blit(font_p.render(usuario_identificacao + "_", True, DOURADO), (365, 292))
-        if len(usuario_identificacao) > 2:
-            screen.blit(font_p.render("Pressione ENTER para entrar", True, VERDE_DINHEIRO), (365, 340))
-
-    elif estado == "MENU":
-        screen.blit(font_p.render(f"ID JOGADOR: {usuario_identificacao}", True, BRANCO), (20, 20))
-        screen.blit(font_p.render(f"SALDO: ${saldo}.00", True, VERDE_DINHEIRO), (20, 50))
-        
-        # Botão PayPal
-        pygame.draw.rect(screen, (0, 112, 186), (350, 200, 300, 60), border_radius=15)
-        screen.blit(font_p.render("PAGAR $3 COM PAYPAL", True, BRANCO), (390, 220))
-        
-        if saldo >= 3:
-            pygame.draw.rect(screen, DOURADO, (350, 320, 300, 50), border_radius=10)
-            screen.blit(font_p.render("APOSTAR EM ANGOLA", True, AZUL_DARK), (395, 335))
-
-    elif estado == "CORRIDA":
-        pygame.draw.rect(screen, VERDE_DINHEIRO, (0, 600, WIDTH, 10))
-        for m in marbles:
-            if m.update() and vencedor == "": vencedor = m.nome
-            pygame.draw.circle(screen, m.cor, (int(m.x), int(m.y)), 16)
-            screen.blit(font_p.render(m.nome, True, BRANCO), (m.x + 20, m.y - 10))
-        if all(m.finished for m in marbles): estado = "RESULTADO"
-
-    elif estado == "RESULTADO":
-        txt = f"VENCEDOR: {vencedor}"
-        screen.blit(font_g.render(txt, True, DOURADO), (380, 200))
-        if vencedor == aposta_em:
-            screen.blit(font_g.render("GANHASTE $30!", True, VERDE_DINHEIRO), (390, 270))
-            # Registo automático para o António conferir
-            with open("lista_premios.txt", "a") as f:
-                f.write(f"JOGADOR: {usuario_identificacao} | GANHOU: $30\n")
-        else:
-            screen.blit(font_g.render("PERDESTE A APOSTA", True, (255,50,50)), (360, 270))
-        screen.blit(font_p.render("CLIQUE PARA VOLTAR AO MENU", True, BRANCO), (360, 450))
-
-    pygame.display.flip()
-    clock.tick(FPS)
-pygame.quit()
+    function reiniciar() {
+        vencedor = "";
+        document.getElementById('result-section').style.display = "none";
+        document.getElementById('menu-section').style.display = "block";
+        document.getElementById('status').innerText = "Saldo: $0.00";
+        document.getElementById('bet-options').style.display = "none";
+    }
+</script>
+</body>
+</html>
